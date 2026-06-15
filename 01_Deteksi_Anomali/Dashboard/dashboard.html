@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>AIoT Demo Dashboard</title>
+
+  <!-- MQTT over WebSocket -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <!-- Chart.js untuk grafik real-time -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f8ff;
+      margin: 0;
+      padding: 24px;
+      color: #0f172a;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #0b3a82;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #475569;
+      margin-bottom: 24px;
+    }
+
+    .connection {
+      margin: 12px 0 22px;
+      padding: 12px 16px;
+      background: #e0f2fe;
+      border-left: 5px solid #0284c7;
+      border-radius: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .wide {
+      grid-column: span 2;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      border: 1px solid #dbeafe;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: #0b3a82;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 16px;
+    }
+
+    .normal { background: #16a34a; }
+    .warning { background: #f97316; }
+    .anomaly { background: #dc2626; }
+    .unknown { background: #64748b; }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 16px;
+    }
+
+    .metric span:first-child {
+      color: #475569;
+    }
+
+    .metric span:last-child {
+      font-weight: bold;
+    }
+
+    canvas {
+      width: 100% !important;
+      max-height: 300px;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-size: 13px;
+      min-height: 120px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .legend-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 8px 0 16px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 4px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .blue { background: #2563eb; }
+    .green { background: #16a34a; }
+    .orange { background: #f97316; }
+    .red { background: #dc2626; }
+    .purple { background: #7c3aed; }
+  </style>
+</head>
+
+<body>
+  <h1>AIoT Demo Dashboard</h1>
+  <div class="subtitle">
+    Real-time monitoring untuk Demo 1A Rule-Based dan Demo 1B ML Simulation
+  </div>
+
+  <div class="connection" id="connectionStatus">
+    Connecting to MQTT broker...
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Demo 1A — Rule-Based Anomaly Detection</h2>
+      <div id="status1a" class="badge unknown">WAITING</div>
+
+      <div class="metric">
+        <span>Temperature</span>
+        <span id="temp1a">-</span>
+      </div>
+      <div class="metric">
+        <span>Humidity</span>
+        <span id="hum1a">-</span>
+      </div>
+      <div class="metric">
+        <span>Moving Average</span>
+        <span id="ma1a">-</span>
+      </div>
+      <div class="metric">
+        <span>Score</span>
+        <span id="score1a">-</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Demo 1B — ML / TinyML Simulation</h2>
+      <div id="status1b" class="badge unknown">WAITING</div>
+
+      <div class="metric">
+        <span>Label</span>
+        <span id="label1b">-</span>
+      </div>
+      <div class="metric">
+        <span>Confidence</span>
+        <span id="conf1b">-</span>
+      </div>
+      <div class="metric">
+        <span>Anomaly Score</span>
+        <span id="anom1b">-</span>
+      </div>
+      <div class="metric">
+        <span>Feature Summary</span>
+        <span id="acc1b">-</span>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <h2>Real-Time Temperature Chart — Demo 1A</h2>
+
+      <div class="legend-box">
+        <div class="legend-item"><span class="dot blue"></span> Temperature</div>
+        <div class="legend-item"><span class="dot green"></span> Set point 28°C</div>
+        <div class="legend-item"><span class="dot orange"></span> Warning 30°C</div>
+        <div class="legend-item"><span class="dot red"></span> Anomaly 35°C</div>
+      </div>
+
+      <canvas id="temperatureChart"></canvas>
+    </div>
+
+    <div class="card wide">
+      <h2>Real-Time ML Score Chart — Demo 1B</h2>
+
+      <div class="legend-box">
+        <div class="legend-item"><span class="dot purple"></span> Anomaly score</div>
+        <div class="legend-item"><span class="dot orange"></span> Warning score 0.40</div>
+        <div class="legend-item"><span class="dot red"></span> Anomaly score 0.70</div>
+      </div>
+
+      <canvas id="mlChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Raw JSON — Demo 1A</h2>
+      <pre id="raw1a">{}</pre>
+    </div>
+
+    <div class="card">
+      <h2>Raw JSON — Demo 1B</h2>
+      <pre id="raw1b">{}</pre>
+    </div>
+  </div>
+
+  <p class="small">
+    MQTT topics: aiot/demo/1a/rulebased dan aiot/demo/1b/ml
+  </p>
+
+  <script>
+    // =============================
+    // CONFIG
+    // =============================
+
+    const MQTT_URL = "wss://mqtt-dashboard.com:8884/mqtt";
+
+    const TOPIC_1A = "aiot/demo/1a/rulebased";
+    const TOPIC_1B = "aiot/demo/1b/ml";
+
+    const MAX_POINTS = 30;
+
+    const TEMP_SET_POINT = 28;
+    const TEMP_WARNING = 30;
+    const TEMP_ANOMALY = 35;
+
+    const ML_WARNING_SCORE = 0.40;
+    const ML_ANOMALY_SCORE = 0.70;
+
+    // =============================
+    // CHART INIT
+    // =============================
+
+    const temperatureChart = new Chart(
+      document.getElementById("temperatureChart"),
+      {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Temperature",
+              data: [],
+              borderColor: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.10)",
+              tension: 0.35,
+              fill: true,
+              pointRadius: 3
+            },
+            {
+              label: "Set point 28°C",
+              data: [],
+              borderColor: "#16a34a",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              tension: 0
+            },
+            {
+              label: "Warning 30°C",
+              data: [],
+              borderColor: "#f97316",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              tension: 0
+            },
+            {
+              label: "Anomaly 35°C",
+              data: [],
+              borderColor: "#dc2626",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              tension: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            y: {
+              min: 20,
+              max: 45,
+              title: {
+                display: true,
+                text: "Temperature (°C)"
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Time"
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true
+            }
+          }
+        }
+      }
+    );
+
+    const mlChart = new Chart(
+      document.getElementById("mlChart"),
+      {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Anomaly score",
+              data: [],
+              borderColor: "#7c3aed",
+              backgroundColor: "rgba(124, 58, 237, 0.10)",
+              tension: 0.35,
+              fill: true,
+              pointRadius: 3
+            },
+            {
+              label: "Warning 0.40",
+              data: [],
+              borderColor: "#f97316",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              tension: 0
+            },
+            {
+              label: "Anomaly 0.70",
+              data: [],
+              borderColor: "#dc2626",
+              borderDash: [8, 6],
+              pointRadius: 0,
+              tension: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            y: {
+              min: 0,
+              max: 1,
+              title: {
+                display: true,
+                text: "Score"
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Time"
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true
+            }
+          }
+        }
+      }
+    );
+
+    function nowLabel() {
+      const d = new Date();
+      return d.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    function pushTemperaturePoint(temperature) {
+      const label = nowLabel();
+
+      temperatureChart.data.labels.push(label);
+      temperatureChart.data.datasets[0].data.push(temperature);
+      temperatureChart.data.datasets[1].data.push(TEMP_SET_POINT);
+      temperatureChart.data.datasets[2].data.push(TEMP_WARNING);
+      temperatureChart.data.datasets[3].data.push(TEMP_ANOMALY);
+
+      if (temperatureChart.data.labels.length > MAX_POINTS) {
+        temperatureChart.data.labels.shift();
+
+        temperatureChart.data.datasets.forEach(dataset => {
+          dataset.data.shift();
+        });
+      }
+
+      temperatureChart.update();
+    }
+
+    function pushMLPoint(score) {
+      const label = nowLabel();
+
+      mlChart.data.labels.push(label);
+      mlChart.data.datasets[0].data.push(score);
+      mlChart.data.datasets[1].data.push(ML_WARNING_SCORE);
+      mlChart.data.datasets[2].data.push(ML_ANOMALY_SCORE);
+
+      if (mlChart.data.labels.length > MAX_POINTS) {
+        mlChart.data.labels.shift();
+
+        mlChart.data.datasets.forEach(dataset => {
+          dataset.data.shift();
+        });
+      }
+
+      mlChart.update();
+    }
+
+    // =============================
+    // MQTT CONNECTION
+    // =============================
+
+    const client = mqtt.connect(MQTT_URL, {
+      clientId: "aiot-dashboard-" + Math.random().toString(16).substring(2, 10),
+      clean: true,
+      connectTimeout: 10000,
+      reconnectPeriod: 3000
+    });
+
+    client.on("connect", function () {
+      document.getElementById("connectionStatus").innerText =
+        "Connected to MQTT broker: " + MQTT_URL;
+
+      client.subscribe(TOPIC_1A);
+      client.subscribe(TOPIC_1B);
+    });
+
+    client.on("error", function (err) {
+      document.getElementById("connectionStatus").innerText =
+        "MQTT error: " + err.message;
+
+      console.error("MQTT error:", err);
+    });
+
+    client.on("close", function () {
+      document.getElementById("connectionStatus").innerText =
+        "MQTT disconnected / reconnecting...";
+    });
+
+    client.on("message", function (topic, message) {
+      let payload = {};
+
+      try {
+        payload = JSON.parse(message.toString());
+      } catch (e) {
+        console.error("Invalid JSON:", message.toString());
+        return;
+      }
+
+      if (topic === TOPIC_1A) {
+        updateDemo1A(payload);
+      }
+
+      if (topic === TOPIC_1B) {
+        updateDemo1B(payload);
+      }
+    });
+
+    // =============================
+    // UI UPDATE
+    // =============================
+
+    function statusClass(status) {
+      if (!status) return "unknown";
+      const s = status.toUpperCase();
+
+      if (s.includes("ANOMALY")) return "anomaly";
+      if (s.includes("WARNING")) return "warning";
+      if (s.includes("NORMAL")) return "normal";
+      return "unknown";
+    }
+
+    function setBadge(elementId, status) {
+      const el = document.getElementById(elementId);
+      el.className = "badge " + statusClass(status);
+      el.innerText = status || "UNKNOWN";
+    }
+
+    function fmt(value, digits = 2) {
+      if (value === undefined || value === null) return "-";
+      if (typeof value === "number") return value.toFixed(digits);
+      return value;
+    }
+
+    function updateDemo1A(data) {
+      setBadge("status1a", data.status);
+
+      document.getElementById("temp1a").innerText = fmt(data.temperature) + " °C";
+      document.getElementById("hum1a").innerText = fmt(data.humidity) + " %";
+      document.getElementById("ma1a").innerText = fmt(data.moving_average) + " °C";
+      document.getElementById("score1a").innerText = fmt(data.score);
+
+      document.getElementById("raw1a").innerText = JSON.stringify(data, null, 2);
+
+      if (typeof data.temperature === "number") {
+        pushTemperaturePoint(data.temperature);
+      }
+    }
+
+    function updateDemo1B(data) {
+      setBadge("status1b", data.status);
+
+      document.getElementById("label1b").innerText = data.label || "-";
+      document.getElementById("conf1b").innerText = fmt(data.confidence);
+      document.getElementById("anom1b").innerText = fmt(data.anomaly_score);
+
+      if (Array.isArray(data.last_acc_sample)) {
+        document.getElementById("acc1b").innerText =
+          data.last_acc_sample.map(v => Number(v).toFixed(2)).join(", ");
+      } else if (data.features) {
+        document.getElementById("acc1b").innerText =
+          "mean=" + fmt(data.features.mean_magnitude) +
+          ", peak=" + fmt(data.features.peak_magnitude) +
+          ", var=" + fmt(data.features.variability);
+      } else {
+        document.getElementById("acc1b").innerText = "-";
+      }
+
+      document.getElementById("raw1b").innerText = JSON.stringify(data, null, 2);
+
+      if (typeof data.anomaly_score === "number") {
+        pushMLPoint(data.anomaly_score);
+      }
+    }
+  </script>
+</body>
+</html>
