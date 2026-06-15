@@ -210,7 +210,9 @@ void publishData(Features f, MLResult result) {
   char payload[512];
   serializeJson(doc, payload);
 
-  mqttClient.publish(MQTT_TOPIC, payload);
+  if (!mqttClient.publish(MQTT_TOPIC, payload)) {
+    Serial.println("MQTT publish FAILED (cek buffer size / koneksi)");
+  }
 
   Serial.println("Published:");
   Serial.println(payload);
@@ -231,6 +233,9 @@ void setup() {
   connectWiFi();
 
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  // Payload 1B (~300 byte) melebihi buffer default PubSubClient (256 byte),
+  // tanpa ini publish() diam-diam gagal dan dashboard tidak menerima data.
+  mqttClient.setBufferSize(512);
 
   Serial.println("Demo 1B Wokwi started: ML Simulation with MPU6050");
 }

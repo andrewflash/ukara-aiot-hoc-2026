@@ -180,6 +180,9 @@ void connectWiFi() {
 
 void connectMQTT() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  // Payload 1B (~300 byte) melebihi buffer default PubSubClient (256 byte),
+  // tanpa ini publish() diam-diam gagal dan dashboard tidak menerima data.
+  mqttClient.setBufferSize(512);
 
   while (!mqttClient.connected()) {
     Serial.print("Connecting MQTT to ");
@@ -235,7 +238,10 @@ void publishResult(String label, String status, float confidence, float anomalyS
   char payload[768];
   serializeJson(doc, payload);
 
-  mqttClient.publish(MQTT_TOPIC, payload);
+  bool ok = mqttClient.publish(MQTT_TOPIC, payload);
+  if (!ok) {
+    Serial.println("MQTT publish FAILED (cek buffer size / koneksi)");
+  }
   Serial.println(payload);
 }
 

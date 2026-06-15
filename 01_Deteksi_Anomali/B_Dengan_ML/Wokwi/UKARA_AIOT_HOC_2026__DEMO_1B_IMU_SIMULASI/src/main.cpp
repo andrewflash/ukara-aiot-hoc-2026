@@ -289,7 +289,9 @@ void publishResult(String simulatedCondition, String label, String status, float
     char payload[768];
     serializeJson(doc, payload);
 
-    mqttClient.publish(MQTT_TOPIC, payload);
+    if (!mqttClient.publish(MQTT_TOPIC, payload)) {
+        Serial.println("MQTT publish FAILED (cek buffer size / koneksi)");
+    }
 
     Serial.println("MQTT payload:");
     Serial.println(payload);
@@ -420,6 +422,9 @@ void setup()
     connectWiFi();
 
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+    // Payload 1B (~300 byte) melebihi buffer default PubSubClient (256 byte),
+    // tanpa ini publish() diam-diam gagal dan dashboard tidak menerima data.
+    mqttClient.setBufferSize(512);
 
     Serial.println("Demo 1B started: Wokwi + Edge Impulse");
     Serial.println("Move potentiometer to simulate normal/warning/anomaly vibration.");

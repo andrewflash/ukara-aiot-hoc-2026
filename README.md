@@ -11,7 +11,7 @@ Membandingkan pendekatan rule-based (tanpa ML) dan Machine Learning
   A_Tanpa_ML/                  Demo 1A - deteksi rule-based (moving average + threshold)
     Wokwi/                     Simulasi ESP32 + DHT22 (sensor suhu)
   B_Dengan_ML/                 Demo 1B - deteksi dengan ML (Edge Impulse)
-    Wokwi/                     Simulasi (suhu) + versi hardware
+    Wokwi/                     Simulasi IMU + versi hardware (getaran/MPU6050)
     ESP32/                     Firmware PlatformIO (collect + inference, MPU6050)
     Model/                     Library Arduino hasil ekspor Edge Impulse (.zip)
     Training/                  Generator dataset training + manifest
