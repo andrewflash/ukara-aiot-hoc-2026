@@ -31,7 +31,7 @@
 const char *WIFI_SSID = "TEST_SSID";
 const char *WIFI_PASSWORD = "PASSWORD";
 
-const char *MQTT_HOST = "mqtt-dashboard.com";
+const char *MQTT_HOST = "broker.hivemq.com";
 const int MQTT_PORT = 1883;
 const char *MQTT_TOPIC = "aiot/demo/1b/ml";
 
